@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jamfpro-tomcat
+  namespace: default
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 2
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: jamfpro-tomcat
+  serviceName: jamfpro-tomcat
+  template:
+    metadata:
+      labels:
+        app: jamfpro-tomcat
+    spec:
+      initContainers:
+      - args:
+        - cp -r /data/* /jamfpro-build/
+        command:
+        - /bin/sh
+        - -c
+        image: jamfpro-build
+        imagePullPolicy: Always
+        name: jamfpro-build
+        volumeMounts:
+        - mountPath: /jamfpro-build
+          name: jamfpro-build
+      - args:
+        - for i in {30..0}; do mysql -uroot -h jamfpro-mysql-0.jamfpro-mysql.default.svc.cluster.local
+          -N -e "SELECT 1" &> /dev/null; if [[ $? == 0 ]]; then exit 0; fi; echo "MySQL
+          init process in progress..."; sleep 1; done; echo "Mysql should now be started"
+        command:
+        - /bin/bash
+        - -c
+        image: mysql:5.7
+        imagePullPolicy: Always
+        name: mysql-init
+        resources:
+         requests:
+            memory: 50Mi
+      volumes:
+      - name: jamfpro-build
+        emptyDir: {}
+      containers:
+      - env:
+        - name: MASTER_NODE_NAME
+          value: jamfpro-tomcat-0
+        - name: JAVA_ARGS
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: DATABASE_HOST
+          value: jamfpro-mysql-0.jamfpro-mysql.default.svc.cluster.local
+        - name: DATABASE_NAME
+          value: jamfsoftware
+        - name: DATABASE_USERNAME
+          value: jamfsoftware
+        - name: DATABASE_PASSWORD
+          value: jamfsw03
+        image: jamfdevops/jamfpro:0.0.4
+        imagePullPolicy: Always
+        name: jamfpro-app
+        ports:
+        - containerPort: 8080
+          name: http-alt-port
+          protocol: TCP
+        - containerPort: 9000
+          name: jmx-port
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - res=$(curl -m 1 --silent -w '%{http_code}' http://localhost:8080/healthCheck.html);http_code="${res:${#res}-3}";if
+              [[ $http_code == 200 ]]; then exit 0; else body="${res:0:${#res}-3}";
+              if [[ $(echo $body|jq '.[0].healthCode') -ge 0 ]] || [[ $(echo $body|jq
+              '.[0].healthCode') == null ]]; then exit 0; else exit 1; fi fi
+          failureThreshold: 150
+          initialDelaySeconds: 20
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            memory: 975Mi
+        volumeMounts:
+        - mountPath: /usr/local/tomcat/webapps/ROOT
+          name: jamfpro-build
+        - mountPath: /usr/local/logs
+          name: jamfpro-log-data-vol
+          subPath: jamfpro-logs
+        - mountPath: /usr/local/tomcat/logs
+          name: jamfpro-log-data-vol
+          subPath: tomcat-logs
+  volumeClaimTemplates:
+  - metadata:
+      name: jamfpro-log-data-vol
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: log-storage

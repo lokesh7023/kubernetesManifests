@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jamfpro-mysql
+  namespace: default
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jamfpro-mysql
+  serviceName: jamfpro-mysql
+  template:
+    metadata:
+      labels:
+        app: jamfpro-mysql
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: jamfsw03
+        - name: MYSQL_DATABASE
+          value: jamfsoftware
+        - name: MYSQL_USER
+          value: jamfsoftware
+        - name: MYSQL_PASSWORD
+          value: jamfsw03
+        image: mysql:5.7
+        imagePullPolicy: Always
+        name: mysql
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - mysql
+            - -uroot
+            - -pjamfsw03
+            - -h
+            - 127.0.0.1
+            - -N
+            - -e
+            - select 1
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            memory: 100Mi
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: jamfpro-mysql-data-vol
+          subPath: mysql
+        - mountPath: /var/log/mysql
+          name: jamfpro-mysql-data-vol
+          subPath: mysql-logs
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: jamfpro-mysql-data-vol
+          subPath: mysql
+        - mountPath: /var/log/mysql
+          name: jamfpro-mysql-data-vol
+          subPath: mysql-logs
+      volumes:
+      - name: jamfpro-log-vol
+        emptyDir: {}
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: jamfpro-mysql-data-vol
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: mysql-storage
