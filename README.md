@@ -2,7 +2,7 @@
 JamfPro Kubernetes manifest examples
 
 ## Description
-A set of Kubernetes manifests for creating a clustered JamfPro instance.  Includes the clustered Tomcat statefulset, a service, and an ingress.  Also includes a MySQL statefulset to get a test instance up and running quickly.
+A set of Kubernetes manifests for creating a clustered JamfPro instance.  Includes the clustered Tomcat statefulset, a service, and an ingress.  Also includes Memcached and MySQL statefulsets to get a test instance up and running quickly.
 
 ## Pre-Requisites
 * A Kubernetes cluster
@@ -15,7 +15,9 @@ The log and mysql storage classes included in this repo are setup for local mini
 
 Within the Tomcat manifest, there is hardcoded mysql server up check before proceeding with starting the JamfPro instance.  If using a different Kubernetes service or an external database persistence this will need to be modified/removed accordingly.
 
-When upgrading a clustered JamfPro instance, the master node MUST be upgraded first to process any database migrations before upgrading the non-master node(s).  This can be accomplished by changing the statefulset update strategy to `OnDelete` 
+Also within the Tomcat manifest is a hardcoded MEMCACHED_HOST value.  Remove the environment variable to disable Memcached or modify the hostname according to your own environment setup.
+
+When upgrading a clustered JamfPro instance, the master node __MUST__ be upgraded first to process any database migrations before upgrading the non-master node(s).  This can be accomplished by changing the statefulset update strategy to `OnDelete` 
 
 -- OR -- 
 

@@ -49,6 +49,8 @@ spec:
       - env:
         - name: MASTER_NODE_NAME
           value: jamfpro-tomcat-0
+        - name: MEMCACHED_HOST
+          value: memcached-0.memcached.default.svc.cluster.local
         - name: JAVA_ARGS
         - name: POD_NAME
           valueFrom:
