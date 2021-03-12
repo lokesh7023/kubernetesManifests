@@ -2,7 +2,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: jamfpro-tomcat
-  namespace: default
+  namespace: k8s-assignment
   annotations:
     ingress.kubernetes.io/affinity: "cookie"
     ingress.kubernetes.io/session-cookie-strategy: "insert"
